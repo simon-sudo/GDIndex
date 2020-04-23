@@ -1,13 +1,19 @@
 self.props = {
-	title: 'GDIndex',
+	title: '🐮🍺Index',
 	default_root_id: 'root',
 	client_id: '202264815644.apps.googleusercontent.com',
 	client_secret: 'X4Z3ca8xfWDb1Voo-F9a7ZxJ',
 	refresh_token: '',
+	// 是否加密指定云盘
+	encrypt_Drive: true,
+	// 加密哪些云盘
+	encryDrive: ["root","456","789",],
 	auth: false,
-	user: '',
-	pass: '',
-	upload: false,
+	user: '123',
+	pass: '123',
+	upload: true,
+	// 开放上传是否需要验证再上传
+	encrypt_upload: true,
 	lite: false
 };
 (function () {
@@ -444,15 +450,55 @@ self.props = {
   const gd = new GoogleDrive(self.props);
   const HTML = `<!DOCTYPE html><html lang=en><head><meta charset=utf-8><meta http-equiv=X-UA-Compatible content="IE=edge"><meta name=viewport content="width=device-width,initial-scale=1"><title>${self.props.title}</title><link href="/~_~_gdindex/resources/css/app.css" rel=stylesheet></head><body><script>window.props = { title: '${self.props.title}', default_root_id: '${self.props.default_root_id}', api: location.protocol + '//' + location.host, upload: ${self.props.upload} }<\/script><div id=app></div><script src="/~_~_gdindex/resources/js/app.js"><\/script></body></html>`;
 
+  function unauthorized() {
+    return new Response('Unauthorized', {
+      headers: {
+        'WWW-Authenticate': 'Basic realm="goindex"',
+        'Access-Control-Allow-Origin': '*'
+      },
+      status: 401
+    });
+  }
+
+  function parseBasicAuth(auth) {
+    try {
+      return atob(auth.split(' ').pop()).split(':');
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function doBasicAuth(request) {
+    const auth = request.headers.get('Authorization');
+
+    if (!auth || !/^Basic [A-Za-z0-9._~+/-]+=*$/i.test(auth)) {
+      return false;
+    }
+
+    const [user, pass] = parseBasicAuth(auth);
+    return user === self.props.user && pass === self.props.pass;
+  }
+
+  function isEncryRoot(rootId) {
+    for (let root_i in self.props.encryDrive) {
+      if (rootId == self.props.encryDrive[root_i]) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   async function onGet(request) {
     let {
       pathname: path
     } = request;
     const rootId = request.searchParams.get('rootId') || self.props.default_root_id;
+    console.log("get");
 
     if (path.startsWith('/~_~_gdindex/resources/')) {
       const remain = path.replace('/~_~_gdindex/resources/', '');
-      const r = await fetch(`https://raw.githubusercontent.com/maple3142/GDIndex/master/web/dist/${remain}`);
+      const r = await fetch(`https://raw.githubusercontent.com/simon-sudo/GDIndex/master/web/dist/${remain}`);
       return new Response(r.body, {
         headers: {
           'Content-Type': mime.getType(remain) + '; charset=utf-8',
@@ -504,6 +550,22 @@ self.props = {
       pathname: path
     } = request;
     const rootId = request.searchParams.get('rootId') || self.props.default_root_id;
+    /**处理post */
+
+    console.log("post");
+
+    if (!self.props.auth) {
+      if (self.props.encrypt_Drive && isEncryRoot(rootId)) {
+        console.log("post登录");
+
+        if (!doBasicAuth(request)) {
+          return unauthorized();
+        } // if (rootId == "root") {
+        // 	return new Response('Permission Denied',{status:403});
+        // }
+
+      }
+    }
 
     if (path.substr(-1) === '/') {
       return new Response(JSON.stringify((await gd.listFolderByPath(path, rootId))), {
@@ -574,40 +636,19 @@ self.props = {
     const name = tok.pop();
     const parent = tok.join('/');
     const rootId = request.searchParams.get('rootId') || self.props.default_root_id;
+    /** 处理put 加密上传*/
+
+    console.log("put login");
+
+    if (self.props.encrypt_upload && !doBasicAuth(request)) {
+      return unauthorized();
+    }
+
     return new Response(JSON.stringify((await gd.uploadByPath(parent, name, fileBody, rootId))), {
       headers: {
         'Content-Type': 'application/json'
       }
     });
-  }
-
-  function unauthorized() {
-    return new Response('Unauthorized', {
-      headers: {
-        'WWW-Authenticate': 'Basic realm="goindex"',
-        'Access-Control-Allow-Origin': '*'
-      },
-      status: 401
-    });
-  }
-
-  function parseBasicAuth(auth) {
-    try {
-      return atob(auth.split(' ').pop()).split(':');
-    } catch (e) {
-      return [];
-    }
-  }
-
-  function doBasicAuth(request) {
-    const auth = request.headers.get('Authorization');
-
-    if (!auth || !/^Basic [A-Za-z0-9._~+/-]+=*$/i.test(auth)) {
-      return false;
-    }
-
-    const [user, pass] = parseBasicAuth(auth);
-    return user === self.props.user && pass === self.props.pass;
   }
 
   function encodePathComponent(path) {
@@ -624,6 +665,7 @@ self.props = {
           'Access-Control-Allow-Methods': 'GET, POST, PUT, HEAD, OPTIONS'
         }
       });
+    console.log("请求处理函数");
 
     if (self.props.auth && !doBasicAuth(request)) {
       return unauthorized();

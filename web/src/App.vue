@@ -37,10 +37,10 @@
 					text
 					class="text-none hidden-sm-and-down"
 					tag="a"
-					href="https://github.com/maple3142/GDIndex"
+					href="https://list.nb.gl"
 					target="_blank"
 				>
-					<v-icon>mdi-github-circle</v-icon>&nbsp;GitHub</v-btn
+					<v-icon>mdi-google-drive</v-icon>&nbsp;🐮🍺List</v-btn
 				>
 			</v-toolbar-items>
 		</v-app-bar>
