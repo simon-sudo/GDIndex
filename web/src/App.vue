@@ -5,7 +5,7 @@
 				<router-link
 					:to="{ path: '/', query: { rootId: $route.query.rootId } }"
 					tag="span"
-					>{{ title }}</router-link
+					><v-icon>mdi-google-drive</v-icon>{{ title }}</router-link
 				>
 			</v-toolbar-title>
 			<v-toolbar-items>
@@ -40,7 +40,7 @@
 					href="https://list.nb.gl"
 					target="_blank"
 				>
-					<v-icon>mdi-google-drive</v-icon>&nbsp;🐮🍺List</v-btn
+					<v-icon>mdi-cloud</v-icon>&nbsp;🐮🍺List</v-btn
 				>
 			</v-toolbar-items>
 		</v-app-bar>
